@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { useAuth } from './hooks/useAuth';
 import { useReadings } from './hooks/useReadings';
 import { useLeaderboard } from './hooks/useLeaderboard';
@@ -326,7 +327,6 @@ function App() {
         onClose={() => setShowWalkthrough(false)}
       />
 
-      {/* Settings Modal */}
       {userProfile && (
         <SettingsModal
           show={showSettings}
@@ -336,6 +336,9 @@ function App() {
           onChangeUsername={changeUsername}
         />
       )}
+
+      {/* Vercel Analytics */}
+      <Analytics />
     </div>
   );
 }
