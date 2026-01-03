@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
 import { useReadings } from './hooks/useReadings';
 import { useLeaderboard } from './hooks/useLeaderboard';
@@ -13,7 +13,8 @@ import { ActivityFeed } from './components/ActivityFeed';
 import { CalendarView } from './components/CalendarView';
 import { CelebrationModal } from './components/CelebrationModal';
 import { SettingsModal } from './components/SettingsModal';
-import { Book, Settings, LogOut, Menu, TrendingUp, Users, Calendar } from 'lucide-react';
+import { WalkthroughModal } from './components/WalkthroughModal';
+import { Book, Settings, LogOut, Menu, TrendingUp, Users, Calendar, HelpCircle } from 'lucide-react';
 
 function App() {
   const { user, userProfile, isAuthenticated, loading: authLoading, logout, changeUsername } = useAuth();
@@ -29,6 +30,16 @@ function App() {
   const [todaysSummary, setTodaysSummary] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [backfillDate, setBackfillDate] = useState<Date | null>(null);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+
+  // Check for first-time user
+  useEffect(() => {
+    const hasSeenWalkthrough = localStorage.getItem('hasSeenWalkthrough');
+    if (!hasSeenWalkthrough && isAuthenticated) {
+      setShowWalkthrough(true);
+      localStorage.setItem('hasSeenWalkthrough', 'true');
+    }
+  }, [isAuthenticated]);
 
   const handleComplete = async (date?: Date) => {
     if (!todaysChapters.trim()) {
@@ -95,6 +106,15 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-4">
+              {/* Help Button */}
+              <button
+                onClick={() => setShowWalkthrough(true)}
+                className="p-2.5 rounded-xl text-neutral-500 hover:bg-neutral-100 transition-all duration-200"
+                aria-label="Help & Guide"
+              >
+                <HelpCircle className="w-5 h-5" />
+              </button>
+
               {/* Profile Menu */}
               <div className="relative">
                 <button
@@ -129,6 +149,16 @@ function App() {
                       >
                         <Settings className="w-4 h-4 text-neutral-400 group-hover:text-primary-600" />
                         <span className="font-medium">Settings</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowWalkthrough(true);
+                          setShowProfileMenu(false);
+                        }}
+                        className="w-full text-left px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 rounded-lg flex items-center gap-3 transition-colors group"
+                      >
+                        <HelpCircle className="w-4 h-4 text-neutral-400 group-hover:text-primary-600" />
+                        <span className="font-medium">How it Works</span>
                       </button>
                       <button
                         onClick={handleLogout}
@@ -288,6 +318,12 @@ function App() {
         username={userProfile?.username || ''}
         message={getMilestoneMessage(completedDays)}
         onClose={() => setShowCelebration(false)}
+      />
+
+      {/* Walkthrough Modal */}
+      <WalkthroughModal
+        isOpen={showWalkthrough}
+        onClose={() => setShowWalkthrough(false)}
       />
 
       {/* Settings Modal */}
