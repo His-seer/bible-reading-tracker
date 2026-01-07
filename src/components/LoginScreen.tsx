@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Book, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { GoogleLogo } from './ui/GoogleLogo';
 import Button from './ui/Button';
 import Input from './ui/Input';
 import Card from './ui/Card';
@@ -10,7 +11,7 @@ import Loading from './ui/Loading';
 type TabType = 'login' | 'signup';
 
 export function LoginScreen() {
-  const { login, signUp, loading, error, resetPassword } = useAuth();
+  const { login, signUp, loading, error, resetPassword, signInWithGoogle } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -260,6 +261,28 @@ export function LoginScreen() {
             </p>
           </form>
         )}
+
+        {/* Google Sign In - Show on both tabs to make it easy */}
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-neutral-200" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-neutral-500">Or continue with</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={signInWithGoogle}
+            disabled={loading}
+            className="mt-6 w-full flex items-center justify-center gap-3 px-4 py-3 border border-neutral-300 rounded-xl shadow-sm bg-white text-neutral-700 font-medium hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
+          >
+            <GoogleLogo className="w-5 h-5" />
+            <span>Sign in with Google</span>
+          </button>
+        </div>
 
         {/* Sign Up Tab */}
         {activeTab === 'signup' && (

@@ -6,6 +6,8 @@ import {
   sendPasswordResetEmail,
   onAuthStateChanged,
   updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { auth } from '../services/firebase';
@@ -164,7 +166,7 @@ export function useAuth() {
       const message = err instanceof Error ? err.message : 'Failed to sign in';
       let friendlyMessage = message;
 
-      if (message.includes('user-not-found') || message.includes('wrong-password')) {
+      if (message.includes('user-not-found') || message.includes('wrong-password') || message.includes('invalid-credential')) {
         friendlyMessage = 'Invalid email or password';
       } else if (message.includes('too-many-requests')) {
         friendlyMessage = 'Too many failed login attempts. Please try again later.';
@@ -271,6 +273,52 @@ export function useAuth() {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+
+      if (result.user) {
+        const { user: firebaseUser } = result;
+
+        // Check if user profile exists, if not create it
+        const existingProfile = await getUser(firebaseUser.uid);
+        if (!existingProfile) {
+          // Use display name or part of email as username
+          let username = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User';
+
+          // Ensure username is valid
+          if (username.length < 2) username += Math.floor(Math.random() * 1000);
+
+          // Check if username exists and append random number if needed
+          const exists = await checkUsernameExists(username);
+          if (exists) {
+            username += Math.floor(Math.random() * 1000);
+          }
+
+          await createUser(firebaseUser.uid, firebaseUser.email || '', username);
+          await updateProfile(firebaseUser, {
+            displayName: username
+          });
+        }
+
+        setUser(firebaseUser);
+        setIsAuthenticated(true);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to sign in with Google';
+      if (!message.includes('auth/popup-closed-by-user')) {
+        setError(message);
+        console.error('Error signing in with Google:', err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     user,
     userProfile,
@@ -282,5 +330,6 @@ export function useAuth() {
     logout,
     resetPassword,
     changeUsername,
+    signInWithGoogle,
   };
 }
