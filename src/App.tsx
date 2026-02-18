@@ -4,6 +4,8 @@ import { useAuth } from './hooks/useAuth';
 import { useReadings } from './hooks/useReadings';
 import { useLeaderboard } from './hooks/useLeaderboard';
 import { getMilestoneMessage } from './utils/streakCalculator';
+import { getPlanForDay, getMissedDays } from './utils/readingPlan';
+import type { ReadingPlanEntry } from './utils/readingPlan';
 import { LoginScreen } from './components/LoginScreen';
 import { StatsCards } from './components/StatsCards';
 import { ProgressBar } from './components/ProgressBar';
@@ -15,6 +17,7 @@ import { CalendarView } from './components/CalendarView';
 import { CelebrationModal } from './components/CelebrationModal';
 import { SettingsModal } from './components/SettingsModal';
 import { WalkthroughModal } from './components/WalkthroughModal';
+import { CatchUpPanel } from './components/CatchUpPanel';
 import { Book, Settings, LogOut, Menu, TrendingUp, Users, Calendar, HelpCircle } from 'lucide-react';
 
 function App() {
@@ -31,7 +34,16 @@ function App() {
   const [todaysSummary, setTodaysSummary] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [backfillDate, setBackfillDate] = useState<Date | null>(null);
+  const [backfillDay, setBackfillDay] = useState<number | null>(null);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
+
+  // The day we're currently logging (either the catch-up day or currentDay)
+  const activeDay = backfillDay ?? currentDay;
+  // The reading plan entry for the active day
+  const activePlanEntry: ReadingPlanEntry | null = getPlanForDay(activeDay) ?? null;
+  // Missed days (past scheduled date, not yet completed)
+  const completedDaySet = new Set(readings.filter(r => r.completed).map(r => r.day));
+  const missedDays = getMissedDays(completedDaySet);
 
   // Check for first-time user
   useEffect(() => {
@@ -50,7 +62,7 @@ function App() {
 
     try {
       setIsSubmitting(true);
-      await saveReading(currentDay, todaysChapters, todaysSummary, date);
+      await saveReading(activeDay, todaysChapters, todaysSummary, date);
 
       setShowCelebration(true);
       setTimeout(() => setShowCelebration(false), 3000);
@@ -58,11 +70,25 @@ function App() {
       setTodaysChapters('');
       setTodaysSummary('');
       setBackfillDate(null);
+      setBackfillDay(null);
     } catch (err) {
       console.error('Error completing day:', err);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Called from CatchUpPanel — select a missed day to log
+  const handleSelectCatchUpDay = (day: number, entry: ReadingPlanEntry) => {
+    setBackfillDay(day);
+    // Pre-fill chapters from the reading plan
+    setTodaysChapters(entry.chapters);
+    setTodaysSummary('');
+    // Use the scheduled date for the backfill
+    const scheduled = new Date(entry.scheduledDate + 'T12:00:00');
+    setBackfillDate(scheduled);
+    // Scroll to the reading form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleLogout = async () => {
@@ -253,16 +279,30 @@ function App() {
               {/* Progress Bar */}
               <ProgressBar completedDays={completedDays} totalDays={90} />
 
-              {/* Today's Reading */}
+              {/* Catch-Up Panel — missed days */}
+              {missedDays.length > 0 && !backfillDay && (
+                <CatchUpPanel
+                  missedDays={missedDays}
+                  onSelectDay={handleSelectCatchUpDay}
+                />
+              )}
+
+              {/* Today's / Catch-up Reading Form */}
               <TodayReading
-                currentDay={currentDay}
+                currentDay={activeDay}
                 chapters={todaysChapters}
                 summary={todaysSummary}
                 onChaptersChange={setTodaysChapters}
                 onSummaryChange={setTodaysSummary}
                 onComplete={handleComplete}
                 selectedDate={backfillDate}
-                onCancel={() => setBackfillDate(null)}
+                planEntry={activePlanEntry}
+                onCancel={() => {
+                  setBackfillDate(null);
+                  setBackfillDay(null);
+                  setTodaysChapters('');
+                  setTodaysSummary('');
+                }}
                 loading={readingsLoading || isSubmitting}
                 error={readingsError}
                 onErrorDismiss={() => setReadingsError(null)}

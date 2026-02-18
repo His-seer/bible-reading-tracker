@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { CheckCircle2, Sparkles } from 'lucide-react';
+import { CheckCircle2, Sparkles, BookOpen, ExternalLink } from 'lucide-react';
 import Button from './ui/Button';
 import Input from './ui/Input';
 import Card from './ui/Card';
 import Alert from './ui/Alert';
+import type { ReadingPlanEntry } from '../utils/readingPlan';
 
 interface TodayReadingProps {
   currentDay: number;
@@ -13,6 +14,7 @@ interface TodayReadingProps {
   onSummaryChange: (value: string) => void;
   onComplete: (date?: Date) => Promise<void>;
   selectedDate?: Date | null;
+  planEntry?: ReadingPlanEntry | null;
   loading?: boolean;
   error?: string | null;
   onErrorDismiss?: () => void;
@@ -27,6 +29,7 @@ export function TodayReading({
   onSummaryChange,
   onComplete,
   selectedDate,
+  planEntry,
   loading = false,
   error,
   onErrorDismiss,
@@ -44,7 +47,9 @@ export function TodayReading({
     }
   };
 
-  const formattedDate = selectedDate ? selectedDate.toLocaleDateString('default', { month: 'long', day: 'numeric', year: 'numeric' }) : null;
+  const formattedDate = selectedDate
+    ? selectedDate.toLocaleDateString('default', { month: 'long', day: 'numeric', year: 'numeric' })
+    : null;
 
   return (
     <Card variant="elevated" padding="lg">
@@ -59,21 +64,46 @@ export function TodayReading({
         </Alert>
       )}
 
+      {/* Planned passage banner */}
+      {planEntry && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-primary-50 to-secondary-50 border border-primary-100 rounded-2xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 bg-primary-100 rounded-xl shrink-0">
+                <BookOpen className="w-4 h-4 text-primary-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-black text-primary-400 uppercase tracking-widest mb-0.5">Today's Passage</p>
+                <p className="text-sm font-bold text-primary-800 leading-tight">{planEntry.chapters}</p>
+              </div>
+            </div>
+            <a
+              href={planEntry.bibleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm shadow-primary-500/20 whitespace-nowrap"
+            >
+              Read Now <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6">
         {editingChapters || !chapters ? (
           <Input
-            label="Today's Chapters"
+            label="Chapters Read"
             type="text"
             value={chapters}
             onChange={(e) => onChaptersChange(e.target.value)}
-            placeholder="e.g., Genesis 1-3, Psalm 1"
+            placeholder={planEntry ? planEntry.chapters : 'e.g., Genesis 1-3, Psalm 1'}
             onBlur={() => chapters && setEditingChapters(false)}
             disabled={loading || isSubmitting}
             autoFocus
           />
         ) : (
           <>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">Today's Chapters</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">Chapters Read</label>
             <div
               onClick={() => setEditingChapters(true)}
               className="w-full p-3 bg-primary-50 rounded-base font-medium text-primary-700 cursor-pointer hover:bg-primary-100 transition-colors duration-fast border border-primary-100"
