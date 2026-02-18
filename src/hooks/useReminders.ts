@@ -40,29 +40,38 @@ function msUntilNext(time: string): number {
 }
 
 function fireNotification() {
-    if (Notification.permission !== 'granted') return;
-    const n = new Notification('📖 Time to Read Your Bible!', {
-        body: "Don't break your streak — open the app and log today's reading.",
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-        tag: 'bible-reminder', // replaces any existing reminder notification
-        requireInteraction: false,
-    });
-    // Click opens the app
-    n.onclick = () => {
-        window.focus();
-        n.close();
-    };
+    try {
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        const n = new Notification('📖 Time to Read Your Bible!', {
+            body: "Don't break your streak — open the app and log today's reading.",
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            tag: 'bible-reminder',
+            requireInteraction: false,
+        });
+        n.onclick = () => {
+            window.focus();
+            n.close();
+        };
+    } catch {
+        // Silently ignore — some browsers block Notification constructor
+    }
 }
 
 export function useReminders() {
     const [settings, setSettings] = useState<ReminderSettings>(loadSettings);
     const [permission, setPermission] = useState<NotificationPermission>(
-        typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+        // iOS Safari has Notification but doesn't support requestPermission reliably
+        // Check both the API existence and that requestPermission is callable
+        typeof Notification !== 'undefined' && typeof Notification.requestPermission === 'function'
+            ? Notification.permission
+            : 'denied'
     );
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const isSupported = typeof Notification !== 'undefined';
+    const isSupported =
+        typeof Notification !== 'undefined' &&
+        typeof Notification.requestPermission === 'function';
 
     /** Schedule (or re-schedule) the daily reminder */
     const scheduleReminder = useCallback((time: string) => {

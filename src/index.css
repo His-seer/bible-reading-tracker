@@ -180,6 +180,11 @@ body {
   background-color: #ffffff;
   color: #111827;
   transition: background-color 0.3s ease, color 0.3s ease;
+  /* Prevent iOS Safari from auto-zooming text */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Prevent horizontal overflow on mobile */
+  overflow-x: hidden;
 }
 
 .dark body {
@@ -199,6 +204,45 @@ header {
 #root {
   width: 100%;
   height: 100%;
+  /* Fix iOS Safari 100vh bug — use dvh with vh fallback */
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ── iOS Safari: safe area insets for notched iPhones ── */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* ── iOS Safari: fix time/date inputs ── */
+input[type="time"],
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ── Mobile: remove tap highlight flash on buttons/links ── */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* ── Mobile: ensure all interactive elements have min 44px tap target ── */
+button:not([class*="h-"]):not([class*="p-"]) {
+  min-height: 44px;
 }
 
 /* ========================================
