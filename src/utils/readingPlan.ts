@@ -135,6 +135,6 @@ export function getMissedDays(completedDays: Set<number>): ReadingPlanEntry[] {
     today.setHours(0, 0, 0, 0);
     return READING_PLAN.filter((entry) => {
         const scheduled = new Date(entry.scheduledDate + 'T00:00:00');
-        return scheduled < today && !completedDays.has(entry.day);
+        return scheduled <= today && !completedDays.has(entry.day);
     });
 }
