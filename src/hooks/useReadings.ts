@@ -28,6 +28,28 @@ export function useReadings(uid: string | null | undefined, username: string | n
         setLoading(true);
         setError(null);
         const data = await getUserReadings(uid);
+
+        // ── One-time fix: correct Day 24's date if it was saved with the wrong date ──
+        const day24 = data.find((r) => r.day === 24);
+        const correctDay24Date = '2026-01-24';
+        if (day24) {
+          const savedDateStr = typeof day24.date === 'string'
+            ? day24.date.split('T')[0]
+            : (day24.date as any)?.toDate?.()?.toISOString?.()?.split('T')[0] ?? '';
+          if (savedDateStr !== correctDay24Date) {
+            const fixedReading = { ...day24, date: correctDay24Date + 'T12:00:00.000Z' };
+            try {
+              await updateReading(uid, 24, fixedReading);
+              // Update local copy too
+              const idx = data.findIndex((r) => r.day === 24);
+              if (idx !== -1) data[idx] = fixedReading;
+            } catch {
+              // Non-critical — silently ignore if fix fails
+            }
+          }
+        }
+        // ── End one-time fix ──
+
         setReadings(data);
 
         // Find current day (first uncompleted day or next day)
