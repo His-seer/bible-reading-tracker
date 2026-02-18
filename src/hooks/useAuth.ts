@@ -8,6 +8,8 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import { auth } from '../services/firebase';
@@ -20,6 +22,40 @@ export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Detect iOS PWA standalone mode (home screen app)
+  const isStandalone =
+    ('standalone' in navigator && (navigator as any).standalone === true) ||
+    window.matchMedia('(display-mode: standalone)').matches;
+
+  // On mount: handle redirect result from signInWithRedirect (iOS PWA flow)
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          const firebaseUser = result.user;
+          const existingProfile = await getUser(firebaseUser.uid);
+          if (!existingProfile) {
+            let username = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User';
+            if (username.length < 2) username += Math.floor(Math.random() * 1000);
+            const exists = await checkUsernameExists(username);
+            if (exists) username += Math.floor(Math.random() * 1000);
+            await createUser(firebaseUser.uid, firebaseUser.email || '', username);
+            await updateProfile(firebaseUser, { displayName: username });
+          }
+          setUser(firebaseUser);
+          setIsAuthenticated(true);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '';
+        if (!message.includes('auth/popup-closed-by-user')) {
+          console.error('Redirect sign-in error:', err);
+        }
+      }
+    };
+    handleRedirectResult();
+  }, []);
 
   // Listen to auth state changes
   useEffect(() => {
@@ -279,30 +315,28 @@ export function useAuth() {
       setLoading(true);
 
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+
+      if (isStandalone) {
+        // iOS PWA: use redirect flow — page will reload and getRedirectResult() handles the result
+        await signInWithRedirect(auth, provider);
+        return; // execution stops here; page reloads after redirect
+      }
+
+      // Normal browser: use popup
       const result = await signInWithPopup(auth, provider);
 
       if (result.user) {
         const { user: firebaseUser } = result;
 
-        // Check if user profile exists, if not create it
         const existingProfile = await getUser(firebaseUser.uid);
         if (!existingProfile) {
-          // Use display name or part of email as username
           let username = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User';
-
-          // Ensure username is valid
           if (username.length < 2) username += Math.floor(Math.random() * 1000);
-
-          // Check if username exists and append random number if needed
           const exists = await checkUsernameExists(username);
-          if (exists) {
-            username += Math.floor(Math.random() * 1000);
-          }
-
+          if (exists) username += Math.floor(Math.random() * 1000);
           await createUser(firebaseUser.uid, firebaseUser.email || '', username);
-          await updateProfile(firebaseUser, {
-            displayName: username
-          });
+          await updateProfile(firebaseUser, { displayName: username });
         }
 
         setUser(firebaseUser);
