@@ -321,7 +321,24 @@ function App() {
             <CalendarView
               readings={readings}
               onSelectDay={(date) => {
-                setBackfillDate(date);
+                // Derive the day number from the clicked date (Day 1 = Jan 1, 2026)
+                const start = new Date(2026, 0, 1);
+                start.setHours(0, 0, 0, 0);
+                const clicked = new Date(date);
+                clicked.setHours(0, 0, 0, 0);
+                const dayNum = Math.round((clicked.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+                if (dayNum >= 1 && dayNum <= 90) {
+                  const entry = getPlanForDay(dayNum);
+                  setBackfillDay(dayNum);
+                  setBackfillDate(date);
+                  if (entry) setTodaysChapters(entry.chapters);
+                  else setTodaysChapters('');
+                  setTodaysSummary('');
+                } else {
+                  // Date outside the 90-day plan — just set the date
+                  setBackfillDate(date);
+                }
                 setActiveTab('progress');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
