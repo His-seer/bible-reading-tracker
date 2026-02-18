@@ -96,10 +96,16 @@ export function useReadings(uid: string | null | undefined, username: string | n
         // Update local state
         setReadings(newReadings);
 
-        // Move to next day
-        if (day < TOTAL_DAYS) {
-          setCurrentDay(day + 1);
+        // Find the actual next uncompleted day (handles gaps from backdating)
+        let nextDay = TOTAL_DAYS;
+        for (let i = 1; i <= TOTAL_DAYS; i++) {
+          const existing = newReadings.find((r) => r.day === i);
+          if (!existing || !existing.completed) {
+            nextDay = i;
+            break;
+          }
         }
+        setCurrentDay(nextDay);
 
         return undefined;
       } catch (err) {

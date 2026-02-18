@@ -274,7 +274,7 @@ export async function updateReading(
     const readingRef = doc(db, 'readings', uid, 'readings', day.toString());
     await updateDoc(readingRef, {
       ...updates,
-      date: serverTimestamp(),
+      date: new Date().toISOString(),
     });
   } catch (error) {
     console.error('Error updating reading:', error);

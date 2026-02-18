@@ -131,7 +131,12 @@ export function ReadingHistory({ readings, onEditReading, onDeleteReading }: Rea
                         <span className="h-1 w-1 bg-neutral-300 rounded-full"></span>
                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-widest bg-white px-2 py-0.5 rounded-md border border-neutral-100">
                           <Calendar className="w-3 h-3" />
-                          {new Date(reading.date).toLocaleDateString()}
+                          {(() => {
+                            const d = typeof reading.date === 'string'
+                              ? new Date(reading.date)
+                              : (reading.date as any)?.toDate?.() ?? new Date();
+                            return d.toLocaleDateString();
+                          })()}
                         </div>
                       </div>
                     </div>

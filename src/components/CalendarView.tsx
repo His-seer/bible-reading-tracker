@@ -27,9 +27,13 @@ export function CalendarView({ readings, onSelectDay }: CalendarViewProps) {
     };
 
     // Helper to check if a specific date has a reading
+    // Safely handles both ISO strings and Firestore Timestamp objects
     const getReadingForDate = (date: Date) => {
         const dateStr = date.toISOString().split('T')[0];
-        return readings.find(r => r.date.split('T')[0] === dateStr);
+        return readings.find(r => {
+            const rDate = typeof r.date === 'string' ? r.date : (r.date as any)?.toDate?.()?.toISOString?.() ?? '';
+            return rDate.split('T')[0] === dateStr;
+        });
     };
 
     // Generate days for the displayed month
@@ -174,19 +178,19 @@ export function CalendarView({ readings, onSelectDay }: CalendarViewProps) {
                                     </div>
                                 )}
 
-                                {!reading && !isFuture && date <= realNow ? (
-                                    <button
-                                        onClick={() => onSelectDay?.(date)}
-                                        className="mt-2 w-full px-2 py-1.5 bg-neutral-100 hover:bg-primary-50 text-[10px] font-bold text-neutral-400 hover:text-primary-600 uppercase tracking-tighter rounded-lg transition-colors border border-dashed border-neutral-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                                    >
-                                        + Backfill
-                                    </button>
-                                ) : !reading && isToday ? (
+                                {!reading && isToday ? (
                                     <button
                                         onClick={() => onSelectDay?.(date)}
                                         className="mt-2 w-full px-2 py-1.5 bg-primary-100 hover:bg-primary-200 text-[10px] font-bold text-primary-600 uppercase tracking-tighter rounded-lg transition-colors border border-primary-200"
                                     >
                                         + Log Today
+                                    </button>
+                                ) : !reading && !isFuture && !isToday ? (
+                                    <button
+                                        onClick={() => onSelectDay?.(date)}
+                                        className="mt-2 w-full px-2 py-1.5 bg-neutral-100 hover:bg-primary-50 text-[10px] font-bold text-neutral-400 hover:text-primary-600 uppercase tracking-tighter rounded-lg transition-colors border border-dashed border-neutral-200 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                    >
+                                        + Backfill
                                     </button>
                                 ) : null}
                             </div>

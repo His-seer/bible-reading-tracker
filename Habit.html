@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Momentum OS | Pro Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .progress-bar { transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .checked { text-decoration: line-through; opacity: 0.4; filter: grayscale(1); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 50; }
+        .modal.active { display: flex; }
+        .streak-glow { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen pb-20">
+
+    <div id="habitModal" class="modal">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md mx-4">
+            <h2 class="text-2xl font-black mb-2 tracking-tight">New Habit</h2>
+            <p class="text-slate-500 text-sm mb-6">"What we repeat, we become."</p>
+            <input type="text" id="habitInput" placeholder="e.g., 5am Wake Up" class="w-full p-4 bg-slate-100 rounded-2xl mb-4 outline-none focus:ring-2 focus:ring-blue-500 font-bold">
+            <div class="flex gap-3">
+                <button onclick="closeModal('habitModal')" class="flex-1 py-4 font-bold text-slate-400">Dismiss</button>
+                <button onclick="addHabit()" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-200">Start Habit</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto p-4 md:p-10">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+            <div>
+                <div class="flex items-center gap-3">
+                    <h1 class="text-4xl font-black tracking-tighter text-slate-900">MOMENTUM</h1>
+                    <span class="bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest">PRO v2.0</span>
+                </div>
+                <p id="currentDate" class="text-slate-500 font-medium mt-1"></p>
+            </div>
+            <div class="flex gap-3 w-full md:w-auto">
+                <button onclick="openModal('habitModal')" class="flex-1 md:flex-none bg-white border border-slate-200 text-slate-800 px-6 py-3 rounded-2xl font-bold text-sm hover:bg-slate-50 transition shadow-sm">
+                    + New Habit
+                </button>
+                <button onclick="finalizeWeek()" class="flex-1 md:flex-none bg-slate-900 text-white px-6 py-3 rounded-2xl font-bold text-sm hover:scale-105 transition shadow-xl">
+                    Archive & Reset
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+            <div class="lg:col-span-4 space-y-6">
+                <section class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-lg font-black text-slate-800 uppercase tracking-tight">Today's Focus</h2>
+                        <button onclick="addPriority()" class="text-blue-600 text-xs font-black uppercase tracking-widest hover:underline">+ Add</button>
+                    </div>
+                    <div id="priorityList" class="space-y-3"></div>
+                </section>
+
+                <section class="bg-slate-900 p-8 rounded-[2rem] text-white shadow-2xl relative overflow-hidden">
+                    <div class="relative z-10">
+                        <h2 class="text-lg font-black mb-6 uppercase tracking-tight text-slate-400">Global Score</h2>
+                        <div id="historyList" class="space-y-4"></div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="lg:col-span-8">
+                <section class="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-8">
+                        <h2 class="text-xl font-black text-slate-800 uppercase tracking-tight">Habit Scoreboard</h2>
+                        <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tap to Log Progress</div>
+                    </div>
+                    <div id="habitContainer" class="space-y-12"></div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_STATE = {
+            priorities: [],
+            habits: [],
+            history: [] // Format: {date, score}
+        };
+
+        let state = JSON.parse(localStorage.getItem('momentumProData')) || DEFAULT_STATE;
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+        function save() { localStorage.setItem('momentumProData', JSON.stringify(state)); render(); }
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        function addHabit() {
+            const input = document.getElementById('habitInput');
+            if (!input.value) return;
+            state.habits.push({
+                id: Date.now(),
+                name: input.value,
+                logs: [false, false, false, false, false, false, false],
+                allTimeStreak: 0
+            });
+            input.value = '';
+            closeModal('habitModal');
+            save();
+        }
+
+        function toggleHabit(habitId, dayIndex) {
+            const h = state.habits.find(x => x.id === habitId);
+            h.logs[dayIndex] = !h.logs[dayIndex];
+            updateStreaks(); // Recalculate live
+            save();
+        }
+
+        function updateStreaks() {
+            state.habits.forEach(h => {
+                let current = 0;
+                // Simplified: Counts consecutive trues in the current week
+                for (let i = 0; i < h.logs.length; i++) {
+                    if (h.logs[i]) current++;
+                    else if (i < new Date().getDay() || (new Date().getDay() === 0 && i < 7)) current = 0;
+                }
+                h.currentStreak = current;
+            });
+        }
+
+        function addPriority() {
+            const text = prompt("Focus for today:");
+            if (text) { state.priorities.push({ id: Date.now(), text, done: false }); save(); }
+        }
+
+        function finalizeWeek() {
+            if (!confirm("This will archive current progress and clear the board. Ready?")) return;
+            let totalPossible = state.habits.length * 7;
+            let totalDone = 0;
+            state.habits.forEach(h => {
+                totalDone += h.logs.filter(Boolean).length;
+                // Transfer streak logic could go here for long-term tracking
+                h.logs = [false, false, false, false, false, false, false];
+            });
+            const score = totalPossible > 0 ? Math.round((totalDone / totalPossible) * 100) : 0;
+            state.history.unshift({ date: new Date().toLocaleDateString(), score });
+            state.priorities = [];
+            save();
+        }
+
+        function render() {
+            document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+            const pList = document.getElementById('priorityList');
+            pList.innerHTML = state.priorities.map(p => `
+                <div class="flex items-center p-4 rounded-2xl bg-slate-50 border border-slate-100 group">
+                    <input type="checkbox" ${p.done ? 'checked' : ''} onclick="togglePriority(${p.id})" class="w-5 h-5 rounded-full border-slate-300">
+                    <span class="ml-4 flex-1 font-bold ${p.done ? 'checked text-slate-400' : 'text-slate-700'}">${p.text}</span>
+                    <button onclick="removePriority(${p.id})" class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 transition">✕</button>
+                </div>
+            `).join('') || '<p class="text-slate-400 text-xs italic text-center py-4">No priorities set.</p>';
+
+            const hContainer = document.getElementById('habitContainer');
+            hContainer.innerHTML = state.habits.map(h => {
+                const count = h.logs.filter(Boolean).length;
+                return `
+                    <div class="relative group">
+                        <div class="flex justify-between items-end mb-4">
+                            <div>
+                                <h3 class="font-black text-slate-900 text-lg leading-tight">${h.name}</h3>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Current Streak: ${h.currentStreak || 0} Days</span>
+                                </div>
+                            </div>
+                            <button onclick="removeHabit(${h.id})" class="text-[10px] font-black text-red-300 opacity-0 group-hover:opacity-100 uppercase tracking-widest hover:text-red-600 transition">Delete</button>
+                        </div>
+                        <div class="flex gap-2">
+                            ${h.logs.map((log, i) => `
+                                <button onclick="toggleHabit(${h.id}, ${i})"
+                                    class="flex-1 aspect-square md:aspect-auto md:py-4 rounded-2xl border-2 font-black text-xs transition-all duration-300
+                                    ${log ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100 scale-95' : 'border-slate-100 text-slate-300 hover:border-blue-200'}">
+                                    ${days[i]}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('') || '<div class="text-center py-20 text-slate-300 font-bold uppercase tracking-widest">Add your first habit to begin</div>';
+
+            const histList = document.getElementById('historyList');
+            histList.innerHTML = state.history.slice(0, 5).map(e => `
+                <div class="flex items-center gap-4">
+                    <div class="flex-1">
+                        <div class="flex justify-between text-[10px] font-black uppercase tracking-tighter mb-1">
+                            <span class="text-slate-500">${e.date}</span>
+                            <span class="text-blue-400">${e.score}%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-blue-500 h-full" style="width: ${e.score}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-slate-600 text-xs italic">Consistency history will appear here.</p>';
+        }
+
+        function togglePriority(id) {
+            const p = state.priorities.find(x => x.id === id);
+            p.done = !p.done;
+            save();
+        }
+
+        function removeHabit(id) { if(confirm("Delete this habit?")) { state.habits = state.habits.filter(h => h.id !== id); save(); } }
+        function removePriority(id) { state.priorities = state.priorities.filter(p => p.id !== id); save(); }
+
+        updateStreaks();
+        render();
+    </script>
+</body>
+</html>

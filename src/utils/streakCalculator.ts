@@ -15,9 +15,16 @@ export function calculateStreak(readings: Reading[]): number {
 
   if (completedReadings.length === 0) return 0;
 
+  // Safely convert a date value (ISO string or Firestore Timestamp) to a JS Date
+  const toJsDate = (date: string | any): Date => {
+    if (typeof date === 'string') return new Date(date);
+    if (date?.toDate) return date.toDate();
+    return new Date(date);
+  };
+
   // Normalize dates to midnight for comparison
-  const getMidnightDate = (date: string | Date) => {
-    const d = new Date(date);
+  const getMidnightDate = (date: string | Date | any) => {
+    const d = toJsDate(date);
     d.setHours(0, 0, 0, 0);
     return d;
   };
