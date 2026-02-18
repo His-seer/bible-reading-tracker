@@ -19,6 +19,11 @@ export function LoginScreen() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetPasswordSent, setResetPasswordSent] = useState(false);
 
+  // Detect iOS PWA standalone mode — Google popup/redirect both fail here due to WebKit ITP
+  const isStandalone =
+    ('standalone' in navigator && (navigator as any).standalone === true) ||
+    window.matchMedia('(display-mode: standalone)').matches;
+
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -273,15 +278,36 @@ export function LoginScreen() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={signInWithGoogle}
-            disabled={loading}
-            className="mt-6 w-full flex items-center justify-center gap-3 px-4 py-3 border border-neutral-300 rounded-xl shadow-sm bg-white text-neutral-700 font-medium hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
-          >
-            <GoogleLogo className="w-5 h-5" />
-            <span>Sign in with Google</span>
-          </button>
+          {/* Google Sign In */}
+          {isStandalone ? (
+            // iOS PWA: Google OAuth can't complete inside the standalone WebView.
+            // Direct the user to open in Safari where it works fine.
+            <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-center">
+              <p className="text-sm font-semibold text-amber-800 mb-1">Sign in with Google</p>
+              <p className="text-xs text-amber-600 mb-3">
+                Google sign-in requires opening in your browser due to iOS restrictions.
+              </p>
+              <a
+                href={window.location.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 rounded-xl text-sm font-bold text-amber-800 hover:bg-amber-50 transition-colors shadow-sm"
+              >
+                <GoogleLogo className="w-4 h-4" />
+                Open in Safari to sign in with Google
+              </a>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={signInWithGoogle}
+              disabled={loading}
+              className="mt-6 w-full flex items-center justify-center gap-3 px-4 py-3 border border-neutral-300 rounded-xl shadow-sm bg-white text-neutral-700 font-medium hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
+            >
+              <GoogleLogo className="w-5 h-5" />
+              <span>Sign in with Google</span>
+            </button>
+          )}
         </div>
 
         {/* Sign Up Tab */}
