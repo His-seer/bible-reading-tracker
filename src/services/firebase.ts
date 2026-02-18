@@ -4,7 +4,9 @@ import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  // Use the Vercel domain as authDomain so OAuth redirects come back to the right place.
+  // VITE_FIREBASE_AUTH_DOMAIN_OVERRIDE should be set to your Vercel URL in production.
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN_OVERRIDE || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
