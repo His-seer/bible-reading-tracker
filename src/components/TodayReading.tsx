@@ -32,7 +32,7 @@ export function TodayReading({
   onErrorDismiss,
   onCancel,
 }: TodayReadingProps) {
-  const [editingChapters, setEditingChapters] = useState(false);
+  const [editingChapters, setEditingChapters] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
